@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'claude/**', 'feature/**']
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ── Backend Tests ──────────────────────────────────────────────────────────
+  # Uses SQLite :memory: — no external DB service required.
+  backend:
+    name: Laravel API Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo, pdo_sqlite, sqlite3, mbstring, bcmath
+          coverage: none
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: backend/vendor
+          key: composer-${{ hashFiles('backend/composer.json', 'backend/composer.lock') }}
+          restore-keys: composer-
+
+      - name: Install Composer dependencies
+        working-directory: backend
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Generate app key
+        working-directory: backend
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Run migrations (SQLite :memory: from phpunit.xml)
+        working-directory: backend
+        run: php artisan migrate --force --env=testing
+
+      - name: Run tests
+        # failOnEmptyTestSuite="false" is set in phpunit.xml —
+        # CI stays green while test files are being written.
+        working-directory: backend
+        run: php artisan test --env=testing
+
+  # ── Mobile Tests ───────────────────────────────────────────────────────────
+  mobile:
+    name: React Native Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          # No cache-dependency-path — package-lock.json is generated
+          # after the first `npm install`. Cache is added once lock file exists.
+
+      - name: Install dependencies
+        # Use `npm install` (not `npm ci`) — no package-lock.json yet.
+        # Switch to `npm ci` once the lock file is committed.
+        working-directory: mobile
+        run: npm install --legacy-peer-deps
+
+      - name: TypeScript check
+        working-directory: mobile
+        run: npx tsc --noEmit
+
+      - name: Run Jest tests
+        # --passWithNoTests keeps CI green while test files are being written.
+        working-directory: mobile
+        run: npx jest --passWithNoTests --ci
