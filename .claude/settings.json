@@ -1,0 +1,16 @@
+{
+  "projectName": "Khmer Lunar Calendar",
+  "description": "Full-stack mobile app — Laravel 11 API + React Native (TypeScript)",
+  "permissions": {
+    "allow": [
+      "Bash(composer:*)",
+      "Bash(php:*)",
+      "Bash(npm:*)",
+      "Bash(npx:*)",
+      "Bash(git:*)"
+    ]
+  },
+  "env": {
+    "API_URL": "http://localhost:8000/api"
+  }
+}
